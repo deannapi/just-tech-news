@@ -25,22 +25,22 @@ router.get("/:id", (req, res) => {
     include: [
       {
         model: Post,
-        attributes: ['id', 'title', 'post_url', 'created_at']
+        attributes: ["id", "title", "post_url", "created_at"],
       },
       {
         model: Comment,
-        attributes: ['id', 'comment_text', 'created_at'],
+        attributes: ["id", "comment_text", "created_at"],
         include: {
           model: Post,
-          attributes: ['title']
-        }
+          attributes: ["title"],
+        },
       },
       {
         model: Post,
-        attributes: ['title'],
+        attributes: ["title"],
         through: Vote,
-        as: 'voted_posts'
-      }
+        as: "voted_posts",
+      },
     ],
     attributes: { exclude: ["password"] },
     where: {
@@ -84,19 +84,13 @@ router.post("/login", (req, res) => {
       email: req.body.email,
     },
   }).then((dbUserData) => {
-    if (!dbUserData) {
-      res.status(400).json({ message: "No user with that email address!" });
-      return;
-    }
-    const validPassword = dbUserData.checkPassword(req.body.password);
-    if (!validPassword) {
-        res.status(400).json({ message: 'Incorrect password!'});
-        return;
-    }
-    res.json({ user: dbUserData, message: 'You are now logged in!'});
-    // res.json({ user: dbUserData });
+    req.session.save(() => {
+      req.session.user_id = dbUserData.id;
+      req.session.username = dbUserData.username;
+      req.session.loggedIn = true;
 
-    // Verify user
+      res.json(dbUserData);
+    });
   });
 });
 
@@ -142,6 +136,17 @@ router.delete("/:id", (req, res) => {
       console.log(err);
       res.status(500).json(err);
     });
+});
+
+router.post('/logout', (req, res) => {
+  if (req.session.loggedIn) {
+    req.session.destroy(() => {
+      res.status(204).end();
+    });
+  }
+  else {
+    res.status(404).end();
+  }
 });
 
 module.exports = router;
